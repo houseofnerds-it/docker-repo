@@ -74,7 +74,7 @@ jobs:
           done
 
           echo "unique_hosts_short=$unique_hosts_short" >> $GITHUB_OUTPUT
-          echo "matrix_hosts=$(echo $unique_hosts_short | tr ' ' '\",\"' | tr '-' '_' )" >> $GITHUB_OUTPUT
+          echo "matrix_hosts=$(echo $unique_hosts_short | tr ' ' '\",\"' | tr '-' '_' | tr '[:lower:]' '[:upper:]')" >> $GITHUB_OUTPUT
 
       - run: echo ${{ steps.matrix-variables.outputs.matrix_hosts }}
 
