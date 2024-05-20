@@ -1,0 +1,96 @@
+version: '3'
+
+services:
+  traefik-wgpve:
+    container_name: traefik-wgpve
+    image: "traefik:latest"
+    restart: always
+    command:
+      - "--log.level=debug"
+      - "--accesslog=true"
+      - "--serversTransport.insecureSkipVerify=true"
+      - "--entrypoints.web.address=:80"
+      #- "--entrypoints.web.http.middlewares=whitelist-from-internal@file"
+      - "--entrypoints.websecure.address=:443"
+      #- "--entrypoints.websecure.http.middlewares=whitelist-from-internal@file"
+      - "--entrypoints.traefik.address=:8080"
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--ping=true"
+      - "--ping.entrypoint=traefik"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.file.directory=/dynamic-config"
+      - "--providers.file.watch=true"
+      - "--certificatesresolvers.haseacme.acme.email=mara.chrishase+traefikwgpve@gmail.com"
+      - "--certificatesresolvers.haseacme.acme.storage=/acme/acme.json"
+      - "--certificatesresolvers.haseacme.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
+      #- "--certificatesresolvers.haseacme.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.haseacme.acme.dnschallenge=true"
+      - "--certificatesresolvers.haseacme.acme.dnschallenge.provider=ns1"
+      - "--certificatesresolvers.haseacme.acme.dnschallenge.resolvers=dns1.p08.nsone.net:53"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /docker-data/traefik-wgpve/dynamic-config:/dynamic-config:ro
+      - /docker-data/traefik-wgpve/acme/:/acme
+      - /docker-data/traefik-wgpve/default-cert:/default-cert
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      docker-vmbr210:
+        ipv4_address: 10.253.42.36
+      docker-internal:
+        aliases:
+          - traefik
+
+  traefik-wgpve-default-cert:
+    container_name: traefik-wgpve-default-cert
+    image: "registry.gitlab.com/hasechris-it/hasechris-docker-images/traefik-default-cert:latest"
+    volumes:
+      # enable execution of docker inside container
+      - /var/run/docker.sock:/var/run/docker.sock
+      # folder with LE json - also see env variable WATCH_FILE
+      - /docker-data/traefik-wgpve/acme:/acme:ro
+      # traefik target for extracted cert
+      - /docker-data/traefik-wgpve/default-cert:/default-cert
+    environment:
+      # the file to be watched for changes
+      - "WATCH_FILE=/acme/acme.json"
+      # domain to extract (MAIN domain, not SAN domain)
+      - "CERT_DOMAIN=houseofnerds.it"
+      # where to copy the cert files (separated by :)
+      - "COPY_FULLCHAIN=/default-cert/fullchain.pem"
+      - "COPY_PRIVKEY=/default-cert/privkey.pem"
+      - "COPY_CHAIN="
+      - "COPY_CERT="
+      # containers to restart
+      - "RESTART=traefik-wgpve"
+    depends_on:
+      traefik-wgpve:
+        condition: service_healthy
+    restart: always
+
+  whoami:
+    image: "traefik/whoami"
+    container_name: "whoami"
+    depends_on:
+    - traefik-wgpve
+    networks:
+      docker-internal:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
+      - "traefik.http.services.whoami.loadbalancer.server.scheme=http"
+      - "traefik.http.routers.whoami.rule=Host(`houseofnerds.it`,`*.houseofnerds.it`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=haseacme"
+
+networks:
+  docker-vmbr210:
+    external: true
+  docker-internal:
+    external: true

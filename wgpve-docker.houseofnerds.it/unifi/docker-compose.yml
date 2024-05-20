@@ -1,0 +1,104 @@
+---
+version: "2.4"
+
+networks:
+  docker-vmbr0:
+    external: true
+  docker-vmbr210:
+    external: true
+  docker-internal:
+    external: true
+
+services:
+  unifi-network-application:
+    image: lscr.io/linuxserver/unifi-network-application:latest
+    container_name: unifi-network-application
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+      - MONGO_USER=unifi
+      - MONGO_HOST=unifi-db
+      - MONGO_PORT=27017
+      - MONGO_DBNAME=unifidb
+      - MEM_LIMIT=1024
+      - MEM_STARTUP=1024
+    depends_on:
+      - unifi-db
+    volumes:
+      - /docker-data/unifi/unifi-app:/config
+    restart: unless-stopped
+    networks:
+      default:
+      docker-vmbr0:
+        ipv4_address: 192.168.42.3
+        # 
+        # aktivieren falls neue USG aktiviert werden soll
+        #ipv4_address: 192.168.1.2
+        #aliases:
+          #- unifi
+      docker-vmbr210:
+        ipv4_address: 10.253.42.21
+    labels:
+      # default traefik enable
+      - "traefik.enable=true"
+      # docker network
+      - "traefik.docker.network=docker-vmbr210"
+      # traefik middleware for http
+      - "traefik.http.middlewares.unifi-https-redirect.redirectscheme.scheme=https"
+      # traefik http router
+      - "traefik.http.routers.unifi-http.entrypoints=web"
+      - "traefik.http.routers.unifi-http.rule=Host(`unifi.houseofnerds.it`)"
+      - "traefik.http.routers.unifi-http.middlewares=unifi-https-redirect@docker"
+      - "traefik.http.routers.unifi-http.service=unifi-backend"
+      # default https headers
+      - "traefik.http.middlewares.unifi-https-default.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.stsSeconds=15552000"
+      - "traefik.http.middlewares.unifi-https-default.headers.stsPreload=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.sslredirect=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.contentTypeNosniff=true"
+      # traefik https router
+      - "traefik.http.routers.unifi-https.entrypoints=websecure"
+      - "traefik.http.routers.unifi-https.middlewares=unifi-https-default"
+      - "traefik.http.routers.unifi-https.rule=Host(`unifi.houseofnerds.it`)"
+      - "traefik.http.routers.unifi-https.service=unifi-backend"
+      - "traefik.http.routers.unifi-https.tls=true"
+      # loadbalancer
+      - "traefik.http.services.unifi-backend.loadbalancer.server.port=8443"
+      - "traefik.http.services.unifi-backend.loadbalancer.server.scheme=https"
+
+  unifi-db:
+    image: docker.io/mongo:4.4
+    container_name: unifi-db
+    command: --quiet
+    volumes:
+      - /docker-data/unifi/unifi-db:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    restart: unless-stopped
+    networks:
+      default:
+
+  unifi-mongo-express:
+    image: mongo-express
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=unifi-db
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+    depends_on:
+        - unifi-db
+    networks:
+      default:
+      docker-internal:
+    labels:
+      # default traefik enable
+      - "traefik.enable=true"
+      # docker network
+      - "traefik.docker.network=docker-internal"
+      # traefik http router
+      - "traefik.http.routers.unifi-db-http.entrypoints=web"
+      - "traefik.http.routers.unifi-db-http.rule=Host(`unifi-db.houseofnerds.it`)"
+      - "traefik.http.routers.unifi-db-http.service=unifi-db-backend"
+      # loadbalancer
+      - "traefik.http.services.unifi-db-backend.loadbalancer.server.port=8081"
+      - "traefik.http.services.unifi-db-backend.loadbalancer.server.scheme=http"

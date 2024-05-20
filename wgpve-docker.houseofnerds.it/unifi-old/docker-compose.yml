@@ -1,0 +1,61 @@
+---
+version: "3.7"
+networks:
+  docker-vmbr0:
+    external: true
+  docker-vmbr210:
+    external: true
+  docker-internal:
+    external: true
+
+services:
+  unifi-controller:
+    image: linuxserver/unifi-controller:amd64-latest
+    container_name: unifi-controller
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MEM_LIMIT=2048
+    volumes:
+      - /docker-data/unifi:/config
+    restart: unless-stopped
+    networks:
+      docker-internal:
+      docker-vmbr0:
+        ipv4_address: 192.168.42.3
+        # 
+        # aktivieren falls neue USG aktiviert werden soll
+        #ipv4_address: 192.168.1.2
+        #aliases:
+          #- unifi
+      docker-vmbr210:
+        ipv4_address: 10.253.42.21
+    labels:
+      # default traefik enable
+      - "traefik.enable=true"
+      # docker network
+      - "traefik.docker.network=docker-internal"
+      # traefik middleware for http
+      - "traefik.http.middlewares.unifi-https-redirect.redirectscheme.scheme=https"
+      # traefik http router
+      - "traefik.http.routers.unifi-http.entrypoints=web"
+      - "traefik.http.routers.unifi-http.rule=Host(`unifi.houseofnerds.it`)"
+      - "traefik.http.routers.unifi-http.middlewares=unifi-https-redirect@docker"
+      - "traefik.http.routers.unifi-http.service=unifi-backend"
+      # default https headers
+      - "traefik.http.middlewares.unifi-https-default.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.stsSeconds=15552000"
+      - "traefik.http.middlewares.unifi-https-default.headers.stsPreload=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.sslredirect=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.unifi-https-default.headers.contentTypeNosniff=true"
+      # traefik https router
+      - "traefik.http.routers.unifi-https.entrypoints=websecure"
+      - "traefik.http.routers.unifi-https.middlewares=unifi-https-default"
+      - "traefik.http.routers.unifi-https.rule=Host(`unifi.houseofnerds.it`)"
+      - "traefik.http.routers.unifi-https.service=unifi-backend"
+      - "traefik.http.routers.unifi-https.tls=true"
+      # loadbalancer
+      - "traefik.http.services.unifi-backend.loadbalancer.server.port=8443"
+      - "traefik.http.services.unifi-backend.loadbalancer.server.scheme=https"
+

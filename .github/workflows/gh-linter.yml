@@ -1,0 +1,27 @@
+name: gh-linter
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # run only on github workflow files
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  linter:
+    runs-on: ubuntu-latest
+    permissions:
+      # needed for the checkout action
+      contents: read
+      # needed to annotate the files in a pull request with comments
+      pull-requests: write
+    name: check github deploy workflow
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "::add-matcher::.github/actionlint-matcher.json"
+      - name: Run linters
+        uses: docker://rhysd/actionlint:1.7.0
+        with:
+          args: -color -shellcheck= -pyflakes=

@@ -1,0 +1,17 @@
+version: '3.4'
+services:
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json
+    command: watchtower unifi-network-application traefik-wgpve main-ingress --schedule '0 0 3 * * SAT' --cleanup --debug
+    networks:
+      default:
+    environment:
+      TZ: 'Europe/Berlin'
+      #WATCHTOWER_NOTIFICATIONS_HOSTNAME: "wgpve-docker.houseofnerds.it"
+    restart: always
+    labels:
+      - "traefik.enable=false"

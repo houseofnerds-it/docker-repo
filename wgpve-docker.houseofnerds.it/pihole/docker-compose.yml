@@ -1,0 +1,57 @@
+version: "2.4"
+networks:
+  docker-vmbr2:
+    external: true
+  docker-internal:
+    external: true
+
+# More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    #cpu_count: 2
+    #mem_limit: 256m
+    environment:
+      TZ: 'Europe/Berlin'
+      VIRTUAL_HOST: pihole.houseofnerds.it
+      IPv6: "false"
+      DNS1: 127.0.0.1
+      DNS2: 1.1.1.1
+    volumes:
+      - '/docker-data/pihole/etc-pihole/:/etc/pihole/'
+      - '/docker-data/pihole/etc-dnsmasq.d/:/etc/dnsmasq.d/'
+    networks:
+      docker-vmbr2:
+        ipv4_address: 10.0.2.14
+      docker-internal:
+    labels:
+      # default traefik enable
+      - "traefik.enable=true"
+      # docker network
+      - "traefik.docker.network=docker-internal"
+      # traefik middleware for http
+      - "traefik.http.middlewares.pihole-https-redirect.redirectscheme.scheme=https"
+      # traefik http router
+      - "traefik.http.routers.pihole-http.entrypoints=web"
+      - "traefik.http.routers.pihole-http.rule=Host(`pihole.houseofnerds.it`)"
+      - "traefik.http.routers.pihole-http.middlewares=pihole-https-redirect@docker"
+      - "traefik.http.routers.pihole-http.service=pihole-backend"
+      # default https headers
+      - "traefik.http.middlewares.pihole-https-default.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.pihole-https-default.headers.stsSeconds=15552000"
+      - "traefik.http.middlewares.pihole-https-default.headers.stsPreload=true"
+      - "traefik.http.middlewares.pihole-https-default.headers.sslredirect=true"
+      - "traefik.http.middlewares.pihole-https-default.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.pihole-https-default.headers.contentTypeNosniff=true"
+      # traefik https router
+      - "traefik.http.routers.pihole-https.entrypoints=websecure"
+      - "traefik.http.routers.pihole-https.middlewares=pihole-https-default"
+      - "traefik.http.routers.pihole-https.rule=Host(`pihole.houseofnerds.it`)"
+      - "traefik.http.routers.pihole-https.service=pihole-backend"
+      - "traefik.http.routers.pihole-https.tls=true"
+      # loadbalancer
+      - "traefik.http.services.pihole-backend.loadbalancer.server.port=80"
+      - "traefik.http.services.pihole-backend.loadbalancer.server.scheme=http"
+

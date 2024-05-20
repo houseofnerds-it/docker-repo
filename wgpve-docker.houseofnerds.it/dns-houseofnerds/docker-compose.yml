@@ -1,0 +1,23 @@
+version: '3.4'
+networks:
+  docker-vmbr210:
+    external: true
+services:
+  dnsserver-houseofnerds:
+    container_name: dns-houseofnerds
+    image: registry.gitlab.com/hasechris-it/hasechris-docker-images/docker-bind9:latest
+    command: ["named", "-c", "/etc/bind/named.conf", "-f", "-4", "-u", "named"]
+    volumes:
+      - /docker-data/dns-houseofnerds/named.conf:/etc/bind/named.conf:ro
+      - /docker-data/dns-houseofnerds/shared:/etc/bind/shared
+      - /docker-data/dns-houseofnerds/dbs-intern:/etc/bind/dbs-intern
+      - /docker-data/dns-houseofnerds/dbs-extern:/etc/bind/dbs-extern
+    restart: always
+    healthcheck:
+      test: ["CMD", "nslookup", "houseofnerds.it", "127.0.0.1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    networks:
+      docker-vmbr210:
+        ipv4_address: 10.253.42.16

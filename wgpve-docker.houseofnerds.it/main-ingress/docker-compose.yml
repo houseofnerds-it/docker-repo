@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+  main-ingress:
+    container_name: main-ingress
+    image: "traefik:latest"
+    restart: always
+    command:
+      - "--log.level=debug"
+      - "--serversTransport.insecureSkipVerify=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.traefik.address=:8080"
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--ping=true"
+      - "--ping.entrypoint=traefik"
+      - "--providers.docker=false"
+      - "--providers.file.directory=/dynamic-config"
+      - "--providers.file.watch=true"
+    volumes:
+      - /docker-data/main-ingress/dynamic-config:/dynamic-config:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      docker-vmbr210:
+        ipv4_address: 10.253.42.20
+
+networks:
+  docker-vmbr210:
+    external: true

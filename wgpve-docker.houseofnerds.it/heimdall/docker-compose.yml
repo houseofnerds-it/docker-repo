@@ -1,0 +1,58 @@
+---
+version: "2.4"
+services:
+  heimdall:
+    image: ghcr.io/linuxserver/heimdall
+    container_name: heimdall-houseofnerds
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /docker-data/heimdall:/config
+    networks:
+      - docker-internal
+    restart: unless-stopped
+    labels:
+      # enable
+      traefik.enable: "true"
+      #
+      # specify network to detect ip of container
+      traefik.docker.network: "docker-internal"
+      #
+      # backend settings
+      traefik.http.services.heimdall-backend.loadbalancer.server.port: 80
+      traefik.http.services.heimdall-backend.loadbalancer.server.scheme: http
+      #
+      # redirect middleware for port 80->443
+      traefik.http.middlewares.heimdall-https-redirect.redirectscheme.scheme: https
+      #
+      # http router with middleware
+      traefik.http.routers.heimdall-http.entrypoints: web
+      traefik.http.routers.heimdall-http.middlewares: heimdall-https-redirect, whitelist-from-internal@file
+      traefik.http.routers.heimdall-http.rule: Host(`heimdall.houseofnerds.it`,`houseofnerds.it`)
+      #
+      #
+      # https middleware (force STS)
+      traefik.http.middlewares.heimdall-https.headers.forceSTSHeader: true
+      traefik.http.middlewares.heimdall-https.headers.stsSeconds: 15552000
+      #
+      #
+      # https router
+      traefik.http.routers.heimdall-https.entrypoints: websecure
+      traefik.http.routers.heimdall-https.middlewares: heimdall-https, whitelist-from-internal@file
+      traefik.http.routers.heimdall-https.rule: Host(`heimdall.houseofnerds.it`,`houseofnerds.it`)
+      traefik.http.routers.heimdall-https.service: heimdall-backend
+      traefik.http.routers.heimdall-https.tls: true
+      traefik.http.routers.heimdall-https.tls.certResolver: haseacme
+ 
+
+
+
+
+
+
+
+networks:
+  docker-internal:
+    external: true

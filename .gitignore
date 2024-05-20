@@ -1,0 +1,22 @@
+# vim swap files
+*.swp
+#
+# versuchs-ordner
+mgtsrv001/versuche/*
+#
+# git secret things
+.gitsecret/keys/random_seed
+!*.secret
+#
+#
+# git secret files from docker containers
+wgpve-docker.houseofnerds.it/traefik-wgpve/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/pihole/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/unifi/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/unifi/init-mongo.js
+wgpve-docker.houseofnerds.it/wiki/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/phpipam/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/watchtower/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/traefik-wgpve/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/wiki/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/github-container/docker-compose.secrets.yml

@@ -1,0 +1,105 @@
+version: '2.4'
+
+networks:
+  docker-internal:
+    external: true
+
+services:
+  phpipam:
+    image: phpipam/phpipam-www:latest
+    environment:
+      - TZ=Europe/Berlin
+      - IPAM_TRUST_X_FORWARDED=true
+    restart: unless-stopped
+    networks:
+      - docker-internal
+    labels:
+      # default traefik enable
+      - "traefik.enable=true"
+      - "traefik.docker.network=docker-vmbr210"
+      - "traefik.http.services.ipam-backend.loadbalancer.server.port=80"
+      - "traefik.http.services.ipam-backend.loadbalancer.server.scheme=http"
+      - "traefik.http.middlewares.ipam-http.redirectscheme.scheme=https"
+      - "traefik.http.routers.ipam-http.entrypoints=web"
+      - "traefik.http.routers.ipam-http.middlewares=ipam-http"
+      - "traefik.http.routers.ipam-http.rule=Host(`ipam.houseofnerds.it`)"
+      - "traefik.http.middlewares.ipam-https.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.ipam-https.headers.stsSeconds=15552000"
+      - "traefik.http.routers.ipam-https.entrypoints=websecure"
+      - "traefik.http.routers.ipam-https.middlewares=ipam-https"
+      - "traefik.http.routers.ipam-https.rule=Host(`ipam.houseofnerds.it`)"
+      - "traefik.http.routers.ipam-https.service=ipam-backend"
+      - "traefik.http.routers.ipam-https.tls=true"
+      - "traefik.http.routers.ipam-https.tls.certResolver=haseacme"
+
+#    volumes:
+#      - phpipam-logo:/phpipam/css/images/logo
+
+  phpipam-cron:
+    image: phpipam/phpipam-cron:latest
+    environment:
+        - TZ=Europe/Berlin
+        - SCAN_INTERVAL=30m
+    restart: unless-stopped
+    networks:
+      - docker-internal
+
+  phpipam-sql:
+    image: mariadb
+    restart: always
+    volumes:
+      - "/docker-data/phpipam-sql:/var/lib/mysql"
+    networks:
+      docker-internal:
+  
+  phpipam-sql-adminer:
+    image: adminer
+    restart: always
+    networks:
+      - docker-internal
+    labels:
+      # default traefik enable
+      - "traefik.enable=true"
+      # docker network
+      - "traefik.docker.network=docker-internal"
+      # traefik middleware for http
+      - "traefik.http.middlewares.phpipam-adminer-https-redirect.redirectscheme.scheme=https"
+      # traefik http router
+      - "traefik.http.routers.phpipam-adminer-http.entrypoints=web"
+      - "traefik.http.routers.phpipam-adminer-http.rule=Host(`phpipam-adminer.houseofnerds.it`)"
+      - "traefik.http.routers.phpipam-adminer-http.middlewares=phpipam-adminer-https-redirect@docker"
+      - "traefik.http.routers.phpipam-adminer-http.service=phpipam-adminer-backend"
+      # default https headers
+      - "traefik.http.middlewares.phpipam-adminer-https-default.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.phpipam-adminer-https-default.headers.stsSeconds=15552000"
+      - "traefik.http.middlewares.phpipam-adminer-https-default.headers.stsPreload=true"
+      - "traefik.http.middlewares.phpipam-adminer-https-default.headers.sslredirect=false"
+      - "traefik.http.middlewares.phpipam-adminer-https-default.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.phpipam-adminer-https-default.headers.contentTypeNosniff=true"
+      # traefik https router
+      - "traefik.http.routers.phpipam-adminer-https.entrypoints=websecure"
+      - "traefik.http.routers.phpipam-adminer-https.middlewares=phpipam-adminer-https-default"
+      - "traefik.http.routers.phpipam-adminer-https.rule=Host(`phpipam-adminer.houseofnerds.it`)"
+      - "traefik.http.routers.phpipam-adminer-https.service=phpipam-adminer-backend"
+      - "traefik.http.routers.phpipam-adminer-https.tls=true"
+      # loadbalancer
+      - "traefik.http.services.phpipam-adminer-backend.loadbalancer.server.port=8080"
+      - "traefik.http.services.phpipam-adminer-backend.loadbalancer.server.scheme=http"
+
+  phpipam-sql-backup:
+    image: fradelg/mysql-cron-backup
+    depends_on:
+      - phpipam-sql
+    networks:
+      - docker-internal
+    volumes:
+      - "/docker-data/backup/phpipam/sql:/backup"
+    environment:
+      - MYSQL_HOST=phpipam-sql
+      - MAX_BACKUPS=8
+      # Every day at 03:00
+      - CRON_TIME=0 3 * * sun
+      # Make it small
+      - GZIP_LEVEL=9
+      - TZ=Europe/Berlin
+    restart: always

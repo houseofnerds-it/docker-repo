@@ -1,0 +1,20 @@
+version: '2.4'
+services:
+  github-runner:
+    image: houseofnerdsit/github-runner:latest
+    user: runner
+    environment:
+      RUNNER_NAME: wgpve-docker
+      RUNNER_GROUP: Default
+      RUNNER_SCOPE: 'org'
+      ORG_NAME: houseofnerds-it
+      LABELS: linux,x64
+      RUN_AS_ROOT: 'false'
+    security_opt:
+      # needed on SELinux systems to allow docker container to manage other docker containers
+      - label:disable
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - '/tmp/runner:/tmp/runner'
+      # note: a quirk of docker-in-docker is that this path
+      # needs to be the same path on host and inside the container,

@@ -1,0 +1,93 @@
+version: '2.4'
+networks:
+  docker-vmbr14:
+    name: docker-vmbr14
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr14
+    ipam:
+      config:
+        - subnet: 10.0.14.0/24
+  docker-vmbr2:
+    name: docker-vmbr2
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr2
+    ipam:
+      config:
+        - subnet: 10.0.2.0/27
+  docker-vmbr210:
+    name: docker-vmbr210
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr210
+    ipam:
+      config:
+        - subnet: 10.253.42.0/24
+  docker-vmbr0:
+    name: docker-vmbr0
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr0
+    ipam:
+      config:
+        - subnet: 192.168.42.0/27
+        - subnet: 192.168.0.0/24
+  docker-vmbr5:
+    name: docker-vmbr5
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr5
+    ipam:
+      config:
+        - subnet: 10.0.5.0/26
+  docker-vmbr7:
+    name: docker-vmbr7
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr7
+    ipam:
+      config:
+        - subnet: 10.0.7.0/26
+  docker-vmbr8:
+    name: docker-vmbr8
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr8
+    ipam:
+      config:
+        - subnet: 10.0.8.0/26
+  docker-vmbr100:
+    name: docker-vmbr100
+    driver: ipvlan
+    driver_opts:
+      ipvlan_mode: l2
+      parent: vmbr100
+    ipam:
+      config:
+        - subnet: 192.168.100.0/26
+  docker-internal:
+    name: docker-internal
+services:
+  dummy:
+    container_name: network-dep-dummy
+    image: williamyeh/dummy
+    entrypoint: ["echo", "Networks generated"]
+    networks:
+      - docker-internal
+      - docker-vmbr210
+      - docker-vmbr0
+      - docker-vmbr2
+      - docker-vmbr5
+      - docker-vmbr7
+      - docker-vmbr8
+      - docker-vmbr14
+      - docker-vmbr100
+

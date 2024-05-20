@@ -1,0 +1,55 @@
+version: '3.4'
+
+networks:
+  docker-vmbr210:
+    external: true
+  docker-vmbr2:
+    external: true
+  docker-vmbr5:
+    external: true
+  docker-vmbr7:
+    external: true
+  docker-vmbr8:
+    external: true
+  docker-vmbr14:
+    external: true
+  docker-vmbr100:
+    external: true
+
+services:
+  broadcast_relay:
+    container_name: broadcast_relay
+    image: hasechris92/udp-broadcast-relay:buildtest
+    init: true
+    environment:
+      UBR_PORTS: "7 9 27031 27032 27033 27034 27035 27036 60128"
+      UBR_DEBUG: 1
+      UBR_SERVICEUSER: 1
+      UBR_ENABLE_MDNS: 1
+      UBR_ENABLE_SSDP: 0
+      UBR_ENABLE_LIFX_BULB: 0
+      UBR_ENABLE_HDHOMERUN: 0
+    restart: unless-stopped
+    networks:
+      # network names are sorted "dumbly"
+      # eth0
+      docker-vmbr14:
+        ipv4_address: 10.0.14.3
+      # eth1
+      docker-vmbr2:
+        ipv4_address: 10.0.2.3
+      # eth2
+      docker-vmbr210:
+        ipv4_address: 10.253.42.4
+      # eth3
+      docker-vmbr5:
+        ipv4_address: 10.0.5.3
+      # eth4
+      docker-vmbr7:
+        ipv4_address: 10.0.7.2
+      # eth5
+      docker-vmbr8:
+        ipv4_address: 10.0.8.3
+      # eth6
+      docker-vmbr100:
+        ipv4_address: 192.168.100.4
