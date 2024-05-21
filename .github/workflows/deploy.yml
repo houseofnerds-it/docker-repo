@@ -110,10 +110,7 @@ jobs:
     strategy:
       matrix:
         host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
-    if: |
-      needs.check_changed_files.outputs.changed_files_modified ||
-      needs.check_changed_files.outputs.changed_files_removed ||
-      needs.check_changed_files.outputs.changed_files_renamed
+    if: ${{ (needs.check_changed_files.outputs.changed_files_modified != '') || (needs.check_changed_files.outputs.changed_files_removed != '') || (needs.check_changed_files.outputs.changed_files_renamed != '') }}
     steps:
       - uses: appleboy/ssh-action@v1.0.3
         with:
@@ -181,6 +178,19 @@ jobs:
     strategy:
       matrix:
         host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
+    if: |
+      always() &&
+      !cancelled() &&
+      !failure() &&
+      (
+        (needs.check_changed_files.outputs.changed_files_added != '') ||
+        (needs.check_changed_files.outputs.changed_files_modified != '') ||
+        (needs.check_changed_files.outputs.changed_files_removed != '') ||
+        (needs.check_changed_files.outputs.changed_files_renamed != '')
+      ) &&
+      (
+        (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
+      )
     steps:
       - uses: appleboy/ssh-action@v1.0.3
         env:
