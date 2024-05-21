@@ -263,7 +263,6 @@ jobs:
       (
         (needs.check_changed_files.outputs.changed_files_added != '') ||
         (needs.check_changed_files.outputs.changed_files_modified != '') ||
-        (needs.check_changed_files.outputs.changed_files_removed != '') ||
         (needs.check_changed_files.outputs.changed_files_renamed != '')
       ) &&
       (
