@@ -1,7 +1,0 @@
-version: '2.4'
-
-services:
-  dummy:
-    container_name: network-dep-dummy
-    image: williamyeh/dummy
-    entrypoint: ["echo", "Networks generated"]

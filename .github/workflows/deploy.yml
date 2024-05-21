@@ -120,7 +120,7 @@ jobs:
           timeout: 10s
           command_timeout: 10m
           script: |
-            for host in $(echo "${{ matrix.host }}" | tr ' ' '\n')
+            for host in $(echo "${{ matrix.host }}" | tr ' ' '\n' | tr '_' '-' | tr '[:upper:]' '[:lower:]')
             do
 
               # handle modified containers
@@ -282,7 +282,7 @@ jobs:
           timeout: 10s
           command_timeout: 4m
           script: |
-            for host in $(echo "${{ matrix.host }}" | tr ' ' '\n')
+            for host in $(echo "${{ matrix.host }}" | tr ' ' '\n' | tr '_' '-' | tr '[:upper:]' '[:lower:]')
             do
               # handle new containers
               for container in ${{ needs.check_changed_files.outputs.changed_files_added }}
