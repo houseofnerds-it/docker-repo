@@ -1,7 +1,0 @@
-version: '2.4'
-
-services:
-  testcontainer:
-    container_name: testcontainer
-    image: williamyeh/dummy
-    entrypoint: ["echo", "testcontainer started"]
