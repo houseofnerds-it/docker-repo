@@ -215,6 +215,20 @@ jobs:
       - handle_gpg
       - stop_modified_removed_renamed_container
       - git_sync
+    if: |
+      always() &&
+      !cancelled() &&
+      !failure() &&
+      (
+        (needs.check_changed_files.outputs.changed_files_added != '') ||
+        (needs.check_changed_files.outputs.changed_files_modified != '') ||
+        (needs.check_changed_files.outputs.changed_files_removed != '') ||
+        (needs.check_changed_files.outputs.changed_files_renamed != '')
+      ) &&
+      (
+        (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
+      ) &&
+      needs.git_sync.result == 'success'
     strategy:
       matrix:
         host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
@@ -231,7 +245,7 @@ jobs:
             cd ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}
             git secret reveal -f -v -P -p ${{ secrets[format('GPG_PASSPHRASE_{0}', matrix.host)] }}
 
-  start_added_or_modified_container:
+  start_added_modified_renamed_container:
     runs-on: self-hosted
     needs: 
       - check_changed_files
@@ -243,8 +257,20 @@ jobs:
       matrix:
         host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
     if: |
-      needs.check_changed_files.outputs.changed_files_added ||
-      needs.check_changed_files.outputs.changed_files_modified
+      always() &&
+      !cancelled() &&
+      !failure() &&
+      (
+        (needs.check_changed_files.outputs.changed_files_added != '') ||
+        (needs.check_changed_files.outputs.changed_files_modified != '') ||
+        (needs.check_changed_files.outputs.changed_files_removed != '') ||
+        (needs.check_changed_files.outputs.changed_files_renamed != '')
+      ) &&
+      (
+        (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
+      ) &&
+      needs.git_sync.result == 'success' &&
+      needs.unlock_secret_files.result == 'success'
     steps:
       - run: echo ${{ needs.check_changed_files.outputs.changed_files_added }}
 
