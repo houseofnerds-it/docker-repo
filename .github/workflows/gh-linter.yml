@@ -19,4 +19,4 @@ jobs:
       pull-requests: write
     name: check github deploy workflow
     steps:
-      - uses: houseofnerds-it/action-github-linter
+      - uses: houseofnerds-it/action-github-linter@master
