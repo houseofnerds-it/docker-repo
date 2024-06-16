@@ -1,3 +1,4 @@
+# just some comment to test the gh actions linter
 name: deploy
 
 on:
