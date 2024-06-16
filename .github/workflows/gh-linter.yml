@@ -19,9 +19,4 @@ jobs:
       pull-requests: write
     name: check github deploy workflow
     steps:
-      - uses: actions/checkout@v4
-      - run: echo "::add-matcher::.github/actionlint-matcher.json"
-      - name: Run linters
-        uses: docker://rhysd/actionlint:1.7.0
-        with:
-          args: -color -shellcheck= -pyflakes=
+      - uses: houseofnerds-it/action-github-linter
