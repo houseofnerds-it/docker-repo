@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: external change detection
         id: changed-files
-        uses: houseofnerds-it/compose-repo-management@master
+        uses: houseofnerds-it/action-compose-management-detect-changes@master
 
 
 
