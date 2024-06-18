@@ -12,8 +12,9 @@ on:
       # exclude network files - will be handled separatly
       - '!**/network/**'
 
-jobs:
-  check_changed_files:
+
+jobs:  
+  detect-changes:
     runs-on: ubuntu-latest
     name: detect which files where changed and type of change
     outputs:
@@ -21,318 +22,285 @@ jobs:
       changed_files_modified: "${{ steps.changed-files.outputs.modified }}"
       changed_files_removed: "${{ steps.changed-files.outputs.removed }}"
       changed_files_renamed: "${{ steps.changed-files.outputs.renamed }}"
-      changed_files_all_csv: "${{ steps.changed-files-csv.outputs.all }}"
-      hosts_added: "${{ steps.detect-hostfolder.outputs.hosts-added }}"
-      hosts_modified: "${{ steps.detect-hostfolder.outputs.hosts_modified }}"
-      hosts_removed: "${{ steps.detect-hostfolder.outputs.hosts_removed }}"
-      hosts_renamed: "${{ steps.detect-hostfolder.outputs.hosts_renamed }}"
-      unique_hosts: "${{ steps.matrix-variables.outputs.unique_hosts }}"
-      unique_hosts_short: "${{ steps.matrix-variables.outputs.unique_hosts_short }}"
-      matrix_hosts: "${{ steps.matrix-variables.outputs.matrix_hosts }}"
+      changed_files_all_csv: "${{ steps.changed-files.outputs.all }}"
+      hosts_added: "${{ steps.changed-files.outputs.hosts-added }}"
+      hosts_modified: "${{ steps.changed-files.outputs.hosts_modified }}"
+      hosts_removed: "${{ steps.changed-files.outputs.hosts_removed }}"
+      hosts_renamed: "${{ steps.changed-files.outputs.hosts_renamed }}"
+      unique_hosts: "${{ steps.changed-files.outputs.unique_hosts }}"
+      unique_hosts_short: "${{ steps.changed-files.outputs.unique_hosts_short }}"
+      matrix_hosts: "${{ steps.changed-files.outputs.matrix_hosts }}"
     steps:
-      - uses: actions/checkout@v4
-      - uses: ruslandulina/compare-basehead-commits@v1
+      - name: external change detection
         id: changed-files
-        with:
-          format: 'space-delimited'
-      - uses: ruslandulina/compare-basehead-commits@v1
-        id: changed-files-csv
-        with:
-          format: 'csv'
+        uses: houseofnerds-it/compose-repo-management@master
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       
-      - name: "Get host folder of added|modified|removed|renamed files"
-        id: detect-hostfolder
-        run: |
-          for file in ${{ steps.changed-files.outputs.added }}
-          do
-            hosts_added="$hosts_added $(echo "$file" | cut -d "/" -f1)"
-          done
+  # check_compose_files:
+  #   runs-on: ubuntu-latest
+  #   needs: check_changed_files
+  #   if: |
+  #     (needs.check_changed_files.outputs.changed_files_added != '') ||
+  #     (needs.check_changed_files.outputs.changed_files_modified != '') ||
+  #     (needs.check_changed_files.outputs.changed_files_renamed != '')
+  #   strategy:
+  #     matrix:
+  #       list_of_files: [ "${{ needs.check_changed_files.outputs.changed_files_all_csv }}" ]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: "check compose files"
+  #       uses: sjafferali/docker-compose-lint-action@v0.1.2
+  #       with:
+  #         compose-file: "${{ matrix.list_of_files }}"
 
-          for file in ${{ steps.changed-files.outputs.modified }}
-          do
-            hosts_modified="$hosts_modified $(echo "$file" | cut -d "/" -f1)"
-          done
-          
-          for file in ${{ steps.changed-files.outputs.removed }}
-          do
-            hosts_removed="$hosts_removed $(echo "$file" | cut -d "/" -f1)"
-          done
-          
-          for file in ${{ steps.changed-files.outputs.renamed }}
-          do
-            hosts_renamed="$hosts_renamed $(echo "$file" | cut -d "/" -f1)"
-          done
-          
-          # generate output
-          echo "hosts_added=$hosts_added" >> $GITHUB_OUTPUT
-          echo "hosts_modified=$hosts_modified" >> $GITHUB_OUTPUT
-          echo "hosts_removed=$hosts_removed" >> $GITHUB_OUTPUT
-          echo "hosts_renamed=$hosts_renamed" >> $GITHUB_OUTPUT
+  # handle_gpg:
+  #   runs-on: self-hosted
+  #   needs:
+  #     - check_changed_files
+  #     - check_compose_files
+  #   strategy:
+  #     matrix:
+  #       host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
+  #   steps:
+  #   - uses: appleboy/ssh-action@v1.0.3
+  #     with:
+  #       host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
+  #       username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
+  #       key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
+  #       timeout: 10s
+  #       command_timeout: 1m
+  #       script: |
+  #         # check and install gpg key IF it is missing
+  #         if [[ $(gpg --batch --no-tty -K | grep -i "${{ vars[format('GPG_MAIL_{0}', matrix.host)] }}" | wc -l) == 0 ]]; then
+  #           echo "${{ secrets[format('GPG_PRIVATE_KEY_{0}', matrix.host)] }}" | gpg --no-tty --batch --passphrase ${{ secrets[format('GPG_PASSPHRASE_{0}', matrix.host)] }} --pinentry-mode loopback --import
+  #         else
+  #           echo "Key is already imported. No change needed."
+  #         fi
 
-      - name: "set matrix host variables"
-        id: matrix-variables
-        run: |
-          unique_hosts=$(echo "${{ steps.detect-hostfolder.outputs.hosts_added }} ${{ steps.detect-hostfolder.outputs.hosts_modified }} ${{ steps.detect-hostfolder.outputs.hosts_removed }} ${{ steps.detect-hostfolder.outputs.hosts_renamed }}" | tr ' ' '\n' | sort -u)
-          for host in $unique_hosts
-          do
-            unique_hosts_short="$unique_hosts_short $(echo "$host" | cut -d "." -f1)"
-          done
+  # # todo: shut down renamed or modified containers
+  # stop_modified_removed_renamed_container:
+  #   runs-on: self-hosted
+  #   needs: 
+  #     - check_changed_files
+  #     - check_compose_files
+  #     - handle_gpg
+  #   strategy:
+  #     matrix:
+  #       host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
+  #   if: ${{ (needs.check_changed_files.outputs.changed_files_modified != '') || (needs.check_changed_files.outputs.changed_files_removed != '') || (needs.check_changed_files.outputs.changed_files_renamed != '') }}
+  #   steps:
+  #     - uses: appleboy/ssh-action@v1.0.3
+  #       with:
+  #         host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
+  #         username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
+  #         key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
+  #         timeout: 10s
+  #         command_timeout: 10m
+  #         script: |
+  #           for host in $(echo "${{ matrix.host }}" | tr ' ' '\n' | tr '_' '-' | tr '[:upper:]' '[:lower:]')
+  #           do
 
-          echo "unique_hosts_short=$unique_hosts_short" >> $GITHUB_OUTPUT
-          echo "matrix_hosts=$(echo $unique_hosts_short | tr ' ' '\",\"' | tr '-' '_' | tr '[:lower:]' '[:upper:]')" >> $GITHUB_OUTPUT
-
-      - run: echo ${{ steps.matrix-variables.outputs.matrix_hosts }}
-      
-  check_compose_files:
-    runs-on: ubuntu-latest
-    needs: check_changed_files
-    if: |
-      (needs.check_changed_files.outputs.changed_files_added != '') ||
-      (needs.check_changed_files.outputs.changed_files_modified != '') ||
-      (needs.check_changed_files.outputs.changed_files_renamed != '')
-    strategy:
-      matrix:
-        list_of_files: [ "${{ needs.check_changed_files.outputs.changed_files_all_csv }}" ]
-    steps:
-      - uses: actions/checkout@v4
-      - name: "check compose files"
-        uses: sjafferali/docker-compose-lint-action@v0.1.2
-        with:
-          compose-file: "${{ matrix.list_of_files }}"
-
-  handle_gpg:
-    runs-on: self-hosted
-    needs:
-      - check_changed_files
-      - check_compose_files
-    strategy:
-      matrix:
-        host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
-    steps:
-    - uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
-        username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
-        key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
-        timeout: 10s
-        command_timeout: 1m
-        script: |
-          # check and install gpg key IF it is missing
-          if [[ $(gpg --batch --no-tty -K | grep -i "${{ vars[format('GPG_MAIL_{0}', matrix.host)] }}" | wc -l) == 0 ]]; then
-            echo "${{ secrets[format('GPG_PRIVATE_KEY_{0}', matrix.host)] }}" | gpg --no-tty --batch --passphrase ${{ secrets[format('GPG_PASSPHRASE_{0}', matrix.host)] }} --pinentry-mode loopback --import
-          else
-            echo "Key is already imported. No change needed."
-          fi
-
-  # todo: shut down renamed or modified containers
-  stop_modified_removed_renamed_container:
-    runs-on: self-hosted
-    needs: 
-      - check_changed_files
-      - check_compose_files
-      - handle_gpg
-    strategy:
-      matrix:
-        host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
-    if: ${{ (needs.check_changed_files.outputs.changed_files_modified != '') || (needs.check_changed_files.outputs.changed_files_removed != '') || (needs.check_changed_files.outputs.changed_files_renamed != '') }}
-    steps:
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
-          username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
-          key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
-          timeout: 10s
-          command_timeout: 10m
-          script: |
-            for host in $(echo "${{ matrix.host }}" | tr ' ' '\n' | tr '_' '-' | tr '[:upper:]' '[:lower:]')
-            do
-
-              # handle modified containers
-              for container in $(echo "${{ needs.check_changed_files.outputs.changed_files_modified }}" | tr ' ' '\n')
-              do
-                if [[ "$container" = *"$host"* ]]; then
-                  # change into right folder and start container
-                  cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
-                  if [[ -f "docker-compose.secret.yml" ]]; then
-                    docker-compose -f docker-compose.yml -f docker-compose.secret.yml down
-                  else
-                    docker-compose down
-                  fi
-                fi
-              done
+  #             # handle modified containers
+  #             for container in $(echo "${{ needs.check_changed_files.outputs.changed_files_modified }}" | tr ' ' '\n')
+  #             do
+  #               if [[ "$container" = *"$host"* ]]; then
+  #                 # change into right folder and start container
+  #                 cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
+  #                 if [[ -f "docker-compose.secret.yml" ]]; then
+  #                   docker-compose -f docker-compose.yml -f docker-compose.secret.yml down
+  #                 else
+  #                   docker-compose down
+  #                 fi
+  #               fi
+  #             done
             
-              for container in $(echo "${{ needs.check_changed_files.outputs.changed_files_removed }}" | tr ' ' '\n')
-              do
-                if [[ "$container" = *"$host"* ]]; then
-                  # change into right folder and start container
-                  cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
-                  if [[ -f "docker-compose.secret.yml" ]]; then
-                    docker-compose -f docker-compose.yml -f docker-compose.secret.yml down
-                  else
-                    docker-compose down
-                  fi
-                fi
-              done
+  #             for container in $(echo "${{ needs.check_changed_files.outputs.changed_files_removed }}" | tr ' ' '\n')
+  #             do
+  #               if [[ "$container" = *"$host"* ]]; then
+  #                 # change into right folder and start container
+  #                 cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
+  #                 if [[ -f "docker-compose.secret.yml" ]]; then
+  #                   docker-compose -f docker-compose.yml -f docker-compose.secret.yml down
+  #                 else
+  #                   docker-compose down
+  #                 fi
+  #               fi
+  #             done
 
-              # handle renamed containers
-              for container in $(echo "${{ needs.check_changed_files.outputs.changed_files_renamed }}" | tr ' ' '\n')
-              do
-                if [[ "$container" = *"$host"* ]]; then
-                  # change into right folder and start container
-                  cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
-                  if [[ -f "docker-compose.secret.yml" ]]; then
-                    docker-compose -f docker-compose.yml -f docker-compose.secret.yml down
-                  else
-                    docker-compose down
-                  fi
-                fi
-              done
+  #             # handle renamed containers
+  #             for container in $(echo "${{ needs.check_changed_files.outputs.changed_files_renamed }}" | tr ' ' '\n')
+  #             do
+  #               if [[ "$container" = *"$host"* ]]; then
+  #                 # change into right folder and start container
+  #                 cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
+  #                 if [[ -f "docker-compose.secret.yml" ]]; then
+  #                   docker-compose -f docker-compose.yml -f docker-compose.secret.yml down
+  #                 else
+  #                   docker-compose down
+  #                 fi
+  #               fi
+  #             done
             
-            done
+  #           done
 
 
 
-  # sync the existing git repo
-  git_sync:
-    runs-on: self-hosted
-    needs: 
-      - check_changed_files
-      - check_compose_files
-      - handle_gpg
-      - stop_modified_removed_renamed_container
-    strategy:
-      matrix:
-        host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
-    if: |
-      always() &&
-      !cancelled() &&
-      !failure() &&
-      (
-        (needs.check_changed_files.outputs.changed_files_added != '') ||
-        (needs.check_changed_files.outputs.changed_files_modified != '') ||
-        (needs.check_changed_files.outputs.changed_files_renamed != '')
-      ) &&
-      (
-        (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
-      )
-    steps:
-      - uses: appleboy/ssh-action@v1.0.3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
-          username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
-          key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
-          timeout: 10s
-          command_timeout: 1m
-          envs: GITHUB_TOKEN
-          script: |
-            cd ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}
-            git fetch --all
-            git pull origin main
+  # # sync the existing git repo
+  # git_sync:
+  #   runs-on: self-hosted
+  #   needs: 
+  #     - check_changed_files
+  #     - check_compose_files
+  #     - handle_gpg
+  #     - stop_modified_removed_renamed_container
+  #   strategy:
+  #     matrix:
+  #       host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
+  #   if: |
+  #     always() &&
+  #     !cancelled() &&
+  #     !failure() &&
+  #     (
+  #       (needs.check_changed_files.outputs.changed_files_added != '') ||
+  #       (needs.check_changed_files.outputs.changed_files_modified != '') ||
+  #       (needs.check_changed_files.outputs.changed_files_renamed != '')
+  #     ) &&
+  #     (
+  #       (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
+  #     )
+  #   steps:
+  #     - uses: appleboy/ssh-action@v1.0.3
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
+  #         username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
+  #         key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
+  #         timeout: 10s
+  #         command_timeout: 1m
+  #         envs: GITHUB_TOKEN
+  #         script: |
+  #           cd ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}
+  #           git fetch --all
+  #           git pull origin main
 
-  # unlock potential new secret files
-  unlock_secret_files:
-    runs-on: self-hosted
-    needs: 
-      - check_changed_files
-      - check_compose_files
-      - handle_gpg
-      - stop_modified_removed_renamed_container
-      - git_sync
-    if: |
-      always() &&
-      !cancelled() &&
-      !failure() &&
-      (
-        (needs.check_changed_files.outputs.changed_files_added != '') ||
-        (needs.check_changed_files.outputs.changed_files_modified != '') ||
-        (needs.check_changed_files.outputs.changed_files_renamed != '')
-      ) &&
-      (
-        (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
-      ) &&
-      needs.git_sync.result == 'success'
-    strategy:
-      matrix:
-        host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
-    steps:
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
-          username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
-          key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
-          timeout: 10s
-          command_timeout: 1m
-          request_pty: true
-          script: |
-            cd ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}
-            git secret reveal -f -v -P -p ${{ secrets[format('GPG_PASSPHRASE_{0}', matrix.host)] }}
+  # # unlock potential new secret files
+  # unlock_secret_files:
+  #   runs-on: self-hosted
+  #   needs: 
+  #     - check_changed_files
+  #     - check_compose_files
+  #     - handle_gpg
+  #     - stop_modified_removed_renamed_container
+  #     - git_sync
+  #   if: |
+  #     always() &&
+  #     !cancelled() &&
+  #     !failure() &&
+  #     (
+  #       (needs.check_changed_files.outputs.changed_files_added != '') ||
+  #       (needs.check_changed_files.outputs.changed_files_modified != '') ||
+  #       (needs.check_changed_files.outputs.changed_files_renamed != '')
+  #     ) &&
+  #     (
+  #       (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
+  #     ) &&
+  #     needs.git_sync.result == 'success'
+  #   strategy:
+  #     matrix:
+  #       host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
+  #   steps:
+  #     - uses: appleboy/ssh-action@v1.0.3
+  #       with:
+  #         host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
+  #         username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
+  #         key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
+  #         timeout: 10s
+  #         command_timeout: 1m
+  #         request_pty: true
+  #         script: |
+  #           cd ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}
+  #           git secret reveal -f -v -P -p ${{ secrets[format('GPG_PASSPHRASE_{0}', matrix.host)] }}
 
-  start_added_modified_renamed_container:
-    runs-on: self-hosted
-    needs: 
-      - check_changed_files
-      - check_compose_files
-      - handle_gpg
-      - stop_modified_removed_renamed_container
-      - git_sync
-      - unlock_secret_files
-    strategy:
-      matrix:
-        host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
-    if: |
-      always() &&
-      !cancelled() &&
-      !failure() &&
-      (
-        (needs.check_changed_files.outputs.changed_files_added != '') ||
-        (needs.check_changed_files.outputs.changed_files_modified != '') ||
-        (needs.check_changed_files.outputs.changed_files_renamed != '')
-      ) &&
-      (
-        (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
-      ) &&
-      needs.git_sync.result == 'success' &&
-      needs.unlock_secret_files.result == 'success'
-    steps:
-      - run: echo ${{ needs.check_changed_files.outputs.changed_files_added }}
+  # start_added_modified_renamed_container:
+  #   runs-on: self-hosted
+  #   needs: 
+  #     - check_changed_files
+  #     - check_compose_files
+  #     - handle_gpg
+  #     - stop_modified_removed_renamed_container
+  #     - git_sync
+  #     - unlock_secret_files
+  #   strategy:
+  #     matrix:
+  #       host: [ "${{ needs.check_changed_files.outputs.matrix_hosts }}" ]
+  #   if: |
+  #     always() &&
+  #     !cancelled() &&
+  #     !failure() &&
+  #     (
+  #       (needs.check_changed_files.outputs.changed_files_added != '') ||
+  #       (needs.check_changed_files.outputs.changed_files_modified != '') ||
+  #       (needs.check_changed_files.outputs.changed_files_renamed != '')
+  #     ) &&
+  #     (
+  #       (needs.stop_modified_removed_renamed_container.result == 'skipped') || (needs.stop_modified_removed_renamed_container.result == 'success')
+  #     ) &&
+  #     needs.git_sync.result == 'success' &&
+  #     needs.unlock_secret_files.result == 'success'
+  #   steps:
+  #     - run: echo ${{ needs.check_changed_files.outputs.changed_files_added }}
 
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
-          username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
-          key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
-          timeout: 10s
-          command_timeout: 4m
-          script: |
-            for host in $(echo "${{ matrix.host }}" | tr ' ' '\n' | tr '_' '-' | tr '[:upper:]' '[:lower:]')
-            do
-              # handle new containers
-              for container in ${{ needs.check_changed_files.outputs.changed_files_added }}
-              do
-                if [[ "$container" = *"$host"* ]]; then
-                  # change into right folder and start container
-                  cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
-                  if [[ -f "docker-compose.secret.yaml" ]]; then
-                    docker-compose -f docker-compose.yml -f docker-compose.secret.yml up -d
-                  else
-                    docker-compose up -d
-                  fi
-                fi
-              done
+  #     - uses: appleboy/ssh-action@v1.0.3
+  #       with:
+  #         host: ${{ vars[format('REMOTE_HOST_{0}', matrix.host)] }}
+  #         username: ${{ vars[format('REMOTE_USER_{0}', matrix.host)] }}
+  #         key: ${{ secrets[format('REMOTE_USER_SSH_PRIVATE_KEY_{0}', matrix.host)] }}
+  #         timeout: 10s
+  #         command_timeout: 4m
+  #         script: |
+  #           for host in $(echo "${{ matrix.host }}" | tr ' ' '\n' | tr '_' '-' | tr '[:upper:]' '[:lower:]')
+  #           do
+  #             # handle new containers
+  #             for container in ${{ needs.check_changed_files.outputs.changed_files_added }}
+  #             do
+  #               if [[ "$container" = *"$host"* ]]; then
+  #                 # change into right folder and start container
+  #                 cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
+  #                 if [[ -f "docker-compose.secret.yaml" ]]; then
+  #                   docker-compose -f docker-compose.yml -f docker-compose.secret.yml up -d
+  #                 else
+  #                   docker-compose up -d
+  #                 fi
+  #               fi
+  #             done
 
-              # handle modified containers
-              for container in ${{ needs.check_changed_files.outputs.changed_files_modified }}
-              do
-                if [[ "$container" = *"$host"* ]]; then
-                  # change into right folder and start container
-                  cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
-                  if [[ -f "docker-compose.secret.yaml" ]]; then
-                    docker-compose -f docker-compose.yml -f docker-compose.secret.yml up -d
-                  else
-                    docker-compose up -d
-                  fi
-                fi
-              done
-            done
+  #             # handle modified containers
+  #             for container in ${{ needs.check_changed_files.outputs.changed_files_modified }}
+  #             do
+  #               if [[ "$container" = *"$host"* ]]; then
+  #                 # change into right folder and start container
+  #                 cd  ${{ vars.REMOTE_DOCKER_REPO_PATH_PARENT }}/${{ vars.REMOTE_DOCKER_REPO_FOLDER_NAME }}/$(echo "$container" | sed 's:[^/]*$::')
+  #                 if [[ -f "docker-compose.secret.yaml" ]]; then
+  #                   docker-compose -f docker-compose.yml -f docker-compose.secret.yml up -d
+  #                 else
+  #                   docker-compose up -d
+  #                 fi
+  #               fi
+  #             done
+  #           done
