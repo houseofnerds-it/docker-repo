@@ -22,7 +22,7 @@ jobs:
       changed_files_modified: "${{ steps.changed-files.outputs.modified }}"
       changed_files_removed: "${{ steps.changed-files.outputs.removed }}"
       changed_files_renamed: "${{ steps.changed-files.outputs.renamed }}"
-      changed_files_all_csv: "${{ steps.changed-files-csv.outputs.all }}"
+      changed_files_all_csv: "${{ steps.changed-files.outputs.all }}"
       hosts_added: "${{ steps.changed-files.outputs.hosts-added }}"
       hosts_modified: "${{ steps.changed-files.outputs.hosts_modified }}"
       hosts_removed: "${{ steps.changed-files.outputs.hosts_removed }}"
