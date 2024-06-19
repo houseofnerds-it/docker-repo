@@ -7,13 +7,15 @@ on:
     paths:
       # first allow all folders - then decline the technical ones 
       - '**'
+      # exclude test container (is used to develop the ci)
+      - 'wgpve-docker.houseofnerds.it/testcontainer/docker-compose.yml'
       # exclude so changes to the workflows dont trigger a docker deployment
       - '!.github/**'
       # exclude network files - will be handled separatly
       - '!**/network/**'
 
 
-jobs:  
+jobs:
   check_changed_files:
     runs-on: ubuntu-latest
     name: detect which files where changed and type of change

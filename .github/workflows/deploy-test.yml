@@ -1,0 +1,18 @@
+name: deploy-test
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # first allow all folders - then decline the technical ones 
+      - 'wgpve-docker.houseofnerds.it/testcontainer/docker-compose.yml'
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: detect which files where changed and type of change
+    steps:
+      - name: use selfmade action for deployment
+        uses: houseofnerds-it/action-compose-management@main
