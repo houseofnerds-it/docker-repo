@@ -1,9 +1,6 @@
 version: '2.4' 
 services:
   dummy:
-    container_name: network-dep-dummy
+    container_name: testcontainer
     image: williamyeh/dummy
-    entrypoint: ["echo", "Networks generated"]
-# huhu
-# next test
-# next next test
+    entrypoint: ["echo", "testcontainer successfully started"]
