@@ -10,9 +10,8 @@ on:
 
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    name: detect which files where changed and type of change
-    steps:
-      - name: use selfmade action for deployment
-        uses: houseofnerds-it/action-compose-management@main
+  deployment:
+    uses: houseofnerds-it/workflow-compose-management/.github/workflows/deployment.yml@main
+    with:
+      action: "deployment-container"
+    secrets: inherit
