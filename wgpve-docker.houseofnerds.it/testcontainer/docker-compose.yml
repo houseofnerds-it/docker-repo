@@ -6,3 +6,4 @@ services:
     entrypoint: ["echo", "Networks generated"]
 # huhu
 # next test
+# next next test
