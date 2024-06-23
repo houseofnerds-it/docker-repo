@@ -1,0 +1,23 @@
+name: Compse Linter
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      # first allow all folders - then decline the technical ones 
+      - '**'
+      # exclude test container (is used to develop the ci)
+      - '!**/testcontainer/**'
+      # exclude so changes to the workflows dont trigger a docker deployment
+      - '!.github/**'
+
+
+jobs:
+  deployment:
+    uses: houseofnerds-it/workflow-compose-management/.github/workflows/main-task_compose-linter.yml@v0.1
+    with:
+      gpg_mail: "${{ vars.GPG_MAIL_COMPOSE_LINTER }}"
+    secrets:
+      gpg_key: "${{ secrets.GPG_PRIVATE_KEY_COMPOSE_LINTER }}"
+      gpg_password: "${{ secrets.GPG_PASSPHRASE_COMPOSE_LINTER }}"
