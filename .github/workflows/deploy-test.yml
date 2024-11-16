@@ -6,7 +6,7 @@ on:
       - main
     paths:
       # first allow all folders - then decline the technical ones 
-      - 'wgpve-docker.houseofnerds.it/testcontainer/docker-compose.yml'
+      - 'wgpve-docker.houseofnerds.it/testcontainer/**'
 
 
 jobs:
