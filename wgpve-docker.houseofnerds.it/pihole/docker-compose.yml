@@ -2,8 +2,6 @@ version: "2.4"
 networks:
   docker-vmbr2:
     external: true
-  docker-internal:
-    external: true
 
 # More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
 services:
@@ -25,12 +23,11 @@ services:
     networks:
       docker-vmbr2:
         ipv4_address: 10.0.2.14
-      docker-internal:
     labels:
       # default traefik enable
       - "traefik.enable=true"
       # docker network
-      - "traefik.docker.network=docker-internal"
+      - "traefik.docker.network=docker-vmbr2"
       # traefik middleware for http
       - "traefik.http.middlewares.pihole-https-redirect.redirectscheme.scheme=https"
       # traefik http router

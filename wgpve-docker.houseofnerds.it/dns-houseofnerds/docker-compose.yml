@@ -9,9 +9,8 @@ services:
     command: ["named", "-c", "/etc/bind/named.conf", "-f", "-4", "-u", "named"]
     volumes:
       - /docker-data/dns-houseofnerds/named.conf:/etc/bind/named.conf:ro
-      - /docker-data/dns-houseofnerds/shared:/etc/bind/shared
-      - /docker-data/dns-houseofnerds/dbs-intern:/etc/bind/dbs-intern
-      - /docker-data/dns-houseofnerds/dbs-extern:/etc/bind/dbs-extern
+      - /docker-data/dns-houseofnerds/houseofnerds.it.db:/etc/bind/houseofnerds.it.db:ro
+      - /docker-data/dns-houseofnerds/dhcp:/etc/bind/dhcp
     restart: always
     healthcheck:
       test: ["CMD", "nslookup", "houseofnerds.it", "127.0.0.1"]
