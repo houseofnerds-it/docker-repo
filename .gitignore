@@ -20,3 +20,4 @@ wgpve-docker.houseofnerds.it/watchtower/docker-compose.secrets.yml
 wgpve-docker.houseofnerds.it/traefik-wgpve/docker-compose.secrets.yml
 wgpve-docker.houseofnerds.it/wiki/docker-compose.secrets.yml
 wgpve-docker.houseofnerds.it/github-container/docker-compose.secrets.yml
+wgpve-docker.houseofnerds.it/testcontainer/docker-compose.secret.yml
