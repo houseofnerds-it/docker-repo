@@ -55,7 +55,7 @@ services:
       traefik.http.routers.wiki-https.tls.certResolver: haseacme
 
   con-wiki-db:
-    image: postgres:11-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: wiki
