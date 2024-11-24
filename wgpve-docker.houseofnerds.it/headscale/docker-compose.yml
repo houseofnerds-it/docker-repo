@@ -1,0 +1,85 @@
+version: "3.7"
+
+networks:
+  docker-internal:
+    external: true
+
+services:
+  headscale:
+    image: headscale/headscale:stable
+    restart: unless-stopped
+    command: 'serve'
+    volumes:
+      - '/docker-data/headscale/data:/var/lib/headscale'
+      - './config:/etc/headscale'
+    networks:
+      default:
+    environment:
+      TZ: 'Europe/Berlin'
+
+  headplane:
+    container_name: headplane
+    image: ghcr.io/tale/headplane:latest
+    restart: unless-stopped
+    volumes:
+      - '/docker-data/headscale/data:/var/lib/headscale'
+      - './config:/etc/headscale'
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+    networks:
+      default:
+      docker-internal:
+    environment:
+      # This is always required for Headplane to work
+      COOKIE_SECRET: 'abcdefghijklmnopqrstuvwxyz'
+
+      HEADSCALE_INTEGRATION: 'docker'
+      HEADSCALE_CONTAINER: 'headscale'
+      DISABLE_API_KEY_LOGIN: 'true'
+      HOST: '0.0.0.0'
+      PORT: '3000'
+        
+      # Only set this to false if you aren't behind a reverse proxy
+      COOKIE_SECURE: 'true'
+
+      # Overrides the configuration file values if they are set in config.yaml
+      # If you want to share the same OIDC configuration you do not need this
+      OIDC_CLIENT_ID: 'headscale'
+      OIDC_ISSUER: 'https://sso.example.com'
+      OIDC_CLIENT_SECRET: 'super_secret_client_secret'
+
+      # This NEEDS to be set with OIDC, regardless of what's in the config
+      # This needs to be a very long-lived (999 day) API key used to create
+      # shorter ones for OIDC and allow the OIDC functionality to work
+      ROOT_API_KEY: 'abcdefghijklmnopqrstuvwxyz'
+    labels:
+      # enable
+      traefik.enable: "true"
+      #
+      # specify network to detect ip of container
+      traefik.docker.network: "docker-internal"
+      #
+      # backend settings
+      traefik.http.services.headplane-backend.loadbalancer.server.port: 3000
+      traefik.http.services.headplane-backend.loadbalancer.server.scheme: http
+      #
+      # redirect middleware for port 80->443
+      traefik.http.middlewares.headplane-https-redirect.redirectscheme.scheme: https
+      #
+      # http router with middleware
+      traefik.http.routers.headplane-http.entrypoints: web
+      traefik.http.routers.headplane-http.middlewares: headplane-https-redirect, whitelist-from-internal@file
+      traefik.http.routers.headplane-http.rule: Host(`headplane.houseofnerds.it`)
+      #
+      #
+      # https middleware (force STS)
+      traefik.http.middlewares.headplane-https.headers.forceSTSHeader: true
+      traefik.http.middlewares.headplane-https.headers.stsSeconds: 15552000
+      #
+      #
+      # https router
+      traefik.http.routers.headplane-https.entrypoints: websecure
+      traefik.http.routers.headplane-https.middlewares: headplane-https, whitelist-from-internal@file
+      traefik.http.routers.headplane-https.rule: Host(`headplane.houseofnerds.it`)
+      traefik.http.routers.headplane-https.service: headplane-backend
+      traefik.http.routers.headplane-https.tls: true
+      traefik.http.routers.headplane-https.tls.certResolver: haseacme
