@@ -17,7 +17,7 @@ on:
 
 jobs:
   deployment:
-    uses: houseofnerds-it/workflow-compose-management/.github/workflows/main-task_deployment.yml@v0.1
+    uses: houseofnerds-it/workflow-compose-management/.github/workflows/main-task_deployment.yml@v0.2
     with:
       action: "deployment-container"
     secrets: inherit
