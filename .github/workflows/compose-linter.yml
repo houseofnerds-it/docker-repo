@@ -15,7 +15,7 @@ on:
 
 jobs:
   deployment:
-    uses: houseofnerds-it/workflow-compose-management/.github/workflows/main-task_compose-linter.yml@v0.1
+    uses: houseofnerds-it/workflow-compose-management/.github/workflows/main-task_compose-linter.yml@v0.2
     with:
       gpg_mail: "${{ vars.GPG_MAIL_COMPOSE_LINTER }}"
     secrets:
