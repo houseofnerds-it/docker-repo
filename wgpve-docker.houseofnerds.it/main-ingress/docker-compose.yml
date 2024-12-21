@@ -3,7 +3,7 @@ version: '3'
 services:
   main-ingress:
     container_name: main-ingress
-    image: "traefik:v2.11.5"
+    image: "traefik:v2.11.16"
     restart: always
     command:
       - "--log.level=debug"
