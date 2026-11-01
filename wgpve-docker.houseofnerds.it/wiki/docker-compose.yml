@@ -6,7 +6,7 @@ networks:
 
 services:
   con-wiki:
-    image: requarks/wiki:2
+    image: requarks/wiki:3
     restart: unless-stopped
     depends_on:
       - con-wiki-db
